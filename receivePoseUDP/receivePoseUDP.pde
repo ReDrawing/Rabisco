@@ -24,6 +24,9 @@ void draw() {
   {
     
     circle(keypoints[i][0], keypoints[i][1], 10); 
+    
+    println(keypointsName[i], keypoints[i][0], keypoints[i][1]);
+    
     text(keypointsName[i], keypoints[i][0], keypoints[i][1]);
     
   }
@@ -35,7 +38,7 @@ void receive( byte[] data, String ip, int port ) {
   String message = new String( data );
   json = parseJSONObject(message);
   
-  JSONObject keypointsDict = json.getJSONObject("_BodyPose__keypoints");
+  JSONObject keypointsDict = json.getJSONObject("_keypoints");
   
   
   Set<String> keypointDictNames = keypointsDict.keys();
