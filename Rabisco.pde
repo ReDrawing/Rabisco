@@ -24,6 +24,13 @@ SoundFile rotDOWN;
 SoundFile rotLEFT;
 SoundFile rotRIGHT;
 
+PImage backgroundBlur;
+PImage fistImage;
+PImage okImage;
+PImage oneImage;
+PImage twoImage;
+PImage threeImage;
+
 
 private int[][] keypoints;
 private String[] keypointsName;
@@ -69,8 +76,12 @@ private boolean enableMouseControl = false;
 private boolean wasDrawing = false;
 private boolean editingMode = false;
 
+PGraphics mask;
+PImage img;
 
 void setup() {
+  
+
   fullScreen();
   colorMode(HSB, 360, 100, 100);
   udp = new UDP( this, 6000); // Trocar pela porta que você usar
@@ -86,6 +97,17 @@ void setup() {
   rotDOWN = new SoundFile(this, "rota2.wav");
   rotLEFT = new SoundFile(this, "rota3.wav");
   rotRIGHT = new SoundFile(this, "rota4.wav");
+  backgroundBlur = loadImage("background.jpg");
+  fistImage = loadImage("fist.png");
+  fistImage.resize(150,150);
+  okImage = loadImage("ok.png");
+  okImage.resize(150,150);
+  oneImage = loadImage("one.png");
+  oneImage.resize(150,150);
+  twoImage = loadImage("two.png");
+  twoImage.resize(150,150);
+  threeImage = loadImage("three.png");
+  threeImage.resize(150,150);
 
   previousHandPos = new float[3]; 
   handPos = new float[3];
@@ -111,6 +133,7 @@ void draw() {
 
   //verifica se esta no modo de edição
   if (editingMode) {
+    
  
   //verifica de abaixou as maos para detectar o gesto
 
@@ -124,6 +147,7 @@ void draw() {
 
       if (actualGesture != "") {
         if (previousGesture == actualGesture) {
+          displayGestureSilhouette(previousGesture);
           //Verifica se manteve o mesmo comando por 10 iterações =~ 4 segundos para executar o comando
           println("igual");
           gestureCount++;
@@ -155,6 +179,8 @@ void draw() {
       //verifica condição de ambas as mãos levantadas para entrar no modo de edição
       if (wrist_l_pos[1] < nose_pos[1] && wrist_r_pos[1] < nose_pos[1]) {
         editingMode = true;
+        image(backgroundBlur, 0, 0);
+        filter(BLUR, 6);
       }
     } 
 
@@ -227,7 +253,27 @@ void receive(byte[] data, String ip, int port)
   msgManager.insertMessage(message);
 } 
 
-
+void displayGestureSilhouette(String gesture){
+  switch (gesture) {
+      case "ONE":
+        image(oneImage,width-150,0);
+        break;
+      case "PEACE":
+        image(twoImage,width-150,0);
+        break;
+      case "THREE":
+        image(threeImage,width-150,0);
+        break;
+      case "OK":
+       image(okImage,width-150,0);
+        break;
+      case "FIST":
+        image(fistImage,width-150,0);
+        break;
+      default: 
+        break;
+      }
+}
 String updateGesture() {
   String gestureStr = "";
   if (msgManager.hasMessage(Gesture.class))
@@ -432,6 +478,8 @@ void executeGestureCommand(String command) {
     break;
   }
   this.editingMode = false;
+  drawBackground();
+  plotAll();
 }
 
 
