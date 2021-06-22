@@ -36,6 +36,8 @@ private int[][] keypoints;
 private String[] keypointsName;
 private float[] previousHandPos;
 private float[] handPos;
+private float[] estimetedHandPos;
+private float[] estimetedHandPos2;
 private float Zp = 0;
 private float Z = 0;
 private float[] neck_pos;
@@ -69,15 +71,14 @@ private String cubeRotation = "";
 private String actualGesture = "";
 private String previousGesture = "";
 private int gestureCount = 0;
-private Boolean handRaised = false;
+private int actualFrame = 0;
+private int previousFrame =0;
 
 private boolean blazeposeMode = true;
 private boolean enableMouseControl = false;
 private boolean wasDrawing = false;
 private boolean editingMode = false;
 
-PGraphics mask;
-PImage img;
 
 void setup() {
   
@@ -108,7 +109,8 @@ void setup() {
   twoImage.resize(150,150);
   threeImage = loadImage("three.png");
   threeImage.resize(150,150);
-
+  estimetedHandPos = new float[3] ;
+  estimetedHandPos2 = new float[3] ;
   previousHandPos = new float[3]; 
   handPos = new float[3];
   keypoints = new int[0][3];
@@ -117,6 +119,8 @@ void setup() {
   setQuadrants();
 
   traj = new Trajectory(new PVector(0, 0), new PVector(0, 0), 0, 0, 1);//Para salvar trajetória
+  
+
 }
 
 void draw() {
@@ -156,7 +160,9 @@ void draw() {
           }
         } else {
           previousGesture = actualGesture;
-          println(actualGesture); 
+          noStroke();
+          fill(0,0,100);
+          ellipse(width-75,75,150,150);
           gestureCount = 0;
         }
       }
@@ -168,11 +174,13 @@ void draw() {
       if (mousePressed) {
         updateMouseData(this.face);
         playFaceSound(this.face);
-        drawRabisco();
+    
       }
     } 
     if (msgManager.hasMessage(BodyPose.class) && !enableMouseControl )
     {
+      previousFrame = actualFrame;
+      actualFrame = frameCount;
       updateOAKData(this.face);
       playFaceSound(this.face);
 
@@ -182,6 +190,7 @@ void draw() {
         image(backgroundBlur, 0, 0);
         filter(BLUR, 6);
       }
+      
     } 
 
     //else {
@@ -215,18 +224,23 @@ void draw() {
 }  
 
 void drawRabisco() {
+  
 
+ 
   //verifica o quadrante e as coordenadas do traço dependendo de cada face
   this.quadrantColor = setColors(this.quadrant);
 
   setReferences(this.face); 
+  
 
-  float speed = dist(this.previousHandPos[0], this.previousHandPos[1], this.handPos[0], this.handPos[1]);//dist(Xp*width, Yp*height, X*width, Y*height);
+  float firstSpeed = dist(this.previousHandPos[0], this.previousHandPos[1], this.handPos[0], this.handPos[1]);//dist(Xp*width, Yp*height, X*width, Y*height);
+  
 
-  //float speed = sqrt(pow(this.wrist_r_vel[0],2) + pow(this.wrist_r_vel[1],2));
-  float lineWidth = map(speed, 5, 50, 2, 20);
+  
+  float lineWidth = map(firstSpeed, 5, 50, 2, 20);
   lineWidth = constrain(lineWidth, 0, 100);
-
+  
+  
   noStroke();
   fill(0, 100);
   strokeCap(ROUND);
@@ -243,6 +257,7 @@ void drawRabisco() {
     rect(this.handPos[0], this.handPos[1], random(80), random(80));
     break;
   }
+  
 }
 //Receive the message and give it to the manager
 void receive(byte[] data, String ip, int port)
@@ -375,13 +390,12 @@ void updateOAKData(int face)
       this.previousHandPos[0] =  this.handPos[0];
       this.previousHandPos[1] =  this.handPos[1];
       if (wrist_l_pos[0] != Float.POSITIVE_INFINITY && wrist_l_pos[1] != Float.POSITIVE_INFINITY) {
-
         //Verifica em qual face está para mudar escolher os eixos apropriados. 
         //Mudar para função, estava dando conflita da maneira que fiz.
         switch(face) {
         case 1: 
-          this.handPos[0] = map(wrist_l_pos[0], 0, 100, 1, 0)*width;
-          this.handPos[1] = map(wrist_l_pos[1], 0, 100, 0, 1)*height;
+          this.handPos[0] = lerp(this.previousHandPos[0],(map(wrist_l_pos[0], 0, 100, 1, 0)*width),0.5);
+          this.handPos[1] = lerp(this.previousHandPos[1],(map(wrist_l_pos[1], 0, 100, 0, 1)*height), 0.5);
           break;
         case 2: 
           this.handPos[0] = -map(wrist_l_pos[1], 0, 100, 0, 1)*width;//-this.Z;
