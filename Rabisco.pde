@@ -36,8 +36,6 @@ private int[][] keypoints;
 private String[] keypointsName;
 private float[] previousHandPos;
 private float[] handPos;
-private float[] estimetedHandPos;
-private float[] estimetedHandPos2;
 private float Zp = 0;
 private float Z = 0;
 private float[] neck_pos;
@@ -50,6 +48,7 @@ private float[] wrist_r_pos;
 private float [] wrist_l_pos;
 private float[] wrist_r_vel;
 private float[] wrist_l_vel;
+private PVector estimetedHandPos;
 
 public ArrayList<Trajectory> trajectories = new ArrayList<Trajectory>();
 public Trajectory traj;
@@ -78,10 +77,12 @@ private boolean blazeposeMode = true;
 private boolean enableMouseControl = false;
 private boolean wasDrawing = false;
 private boolean editingMode = false;
+private boolean enableSlerp = false;
+private boolean enableInterpolation = false;
 
 
 void setup() {
-  
+
 
   fullScreen();
   colorMode(HSB, 360, 100, 100);
@@ -100,17 +101,18 @@ void setup() {
   rotRIGHT = new SoundFile(this, "rota4.wav");
   backgroundBlur = loadImage("background.jpg");
   fistImage = loadImage("fist.png");
-  fistImage.resize(150,150);
+  fistImage.resize(150, 150);
   okImage = loadImage("ok.png");
-  okImage.resize(150,150);
+  okImage.resize(150, 150);
   oneImage = loadImage("one.png");
-  oneImage.resize(150,150);
+  oneImage.resize(150, 150);
   twoImage = loadImage("two.png");
-  twoImage.resize(150,150);
+  twoImage.resize(150, 150);
   threeImage = loadImage("three.png");
-  threeImage.resize(150,150);
-  estimetedHandPos = new float[3] ;
-  estimetedHandPos2 = new float[3] ;
+  threeImage.resize(150, 150);
+  //estimetedHandPos = new float[3] ;
+  //estimetedHandPos2 = new float[3] ;
+  estimetedHandPos = new PVector(0, 0);
   previousHandPos = new float[3]; 
   handPos = new float[3];
   keypoints = new int[0][3];
@@ -119,8 +121,6 @@ void setup() {
   setQuadrants();
 
   traj = new Trajectory(new PVector(0, 0), new PVector(0, 0), 0, 0, 1);//Para salvar trajetória
-  
-
 }
 
 void draw() {
@@ -137,36 +137,34 @@ void draw() {
 
   //verifica se esta no modo de edição
   if (editingMode) {
-    
- 
-  //verifica de abaixou as maos para detectar o gesto
 
-      face1.stop();
-      face2.stop();
-      face3.stop();
-      face4.stop();
-      face5.stop();
-      face6.stop();
-      actualGesture = updateGesture();
 
-      if (actualGesture != "") {
-        if (previousGesture == actualGesture) {
-          displayGestureSilhouette(previousGesture);
-          //Verifica se manteve o mesmo comando por 10 iterações =~ 4 segundos para executar o comando
-          println("igual");
-          gestureCount++;
-          if (gestureCount == 10) {
-            executeGestureCommand(previousGesture);
-          }
-        } else {
-          previousGesture = actualGesture;
-          noStroke();
-          fill(0,0,100);
-          ellipse(width-75,75,150,150);
-          gestureCount = 0;
+    //verifica de abaixou as maos para detectar o gesto
+
+    face1.stop();
+    face2.stop();
+    face3.stop();
+    face4.stop();
+    face5.stop();
+    face6.stop();
+    actualGesture = updateGesture();
+
+    if (actualGesture != "") {
+      if (previousGesture == actualGesture) {
+        displayGestureSilhouette(previousGesture);
+        //Verifica se manteve o mesmo comando por 10 iterações =~ 4 segundos para executar o comando
+        gestureCount++;
+        if (gestureCount == 8) {
+          executeGestureCommand(previousGesture);
         }
+      } else {
+        previousGesture = actualGesture;
+        noStroke();
+        fill(0, 0, 100);
+        ellipse(width-75, 75, 150, 150);
+        gestureCount = 0;
       }
-    
+    }
   } else {
 
     //atualisa posição do traço dependendo do modo 
@@ -174,7 +172,6 @@ void draw() {
       if (mousePressed) {
         updateMouseData(this.face);
         playFaceSound(this.face);
-    
       }
     } 
     if (msgManager.hasMessage(BodyPose.class) && !enableMouseControl )
@@ -190,24 +187,9 @@ void draw() {
         image(backgroundBlur, 0, 0);
         filter(BLUR, 6);
       }
-      
     } 
 
-    //else {
-    //  face1.stop();
-    //  face2.stop();
-    //  face3.stop();
-    //  face4.stop();
-    //  face5.stop();
-    //  face6.stop();
-    //}
 
-    //se houve uma rotação, rotaciona o cubo
-    //if (change) {
-    //  changeFace(this.face);
-    //  this.change = false;
-
-    //}
 
     //para apagar tela e salvar em um arquivo de imagem.
     if (this.eraser) {
@@ -224,23 +206,23 @@ void draw() {
 }  
 
 void drawRabisco() {
-  
 
- 
+
+
   //verifica o quadrante e as coordenadas do traço dependendo de cada face
   this.quadrantColor = setColors(this.quadrant);
 
   setReferences(this.face); 
-  
+
 
   float firstSpeed = dist(this.previousHandPos[0], this.previousHandPos[1], this.handPos[0], this.handPos[1]);//dist(Xp*width, Yp*height, X*width, Y*height);
-  
 
-  
+
+
   float lineWidth = map(firstSpeed, 5, 50, 2, 20);
   lineWidth = constrain(lineWidth, 0, 100);
-  
-  
+
+
   noStroke();
   fill(0, 100);
   strokeCap(ROUND);
@@ -257,7 +239,6 @@ void drawRabisco() {
     rect(this.handPos[0], this.handPos[1], random(80), random(80));
     break;
   }
-  
 }
 //Receive the message and give it to the manager
 void receive(byte[] data, String ip, int port)
@@ -268,26 +249,26 @@ void receive(byte[] data, String ip, int port)
   msgManager.insertMessage(message);
 } 
 
-void displayGestureSilhouette(String gesture){
+void displayGestureSilhouette(String gesture) {
   switch (gesture) {
-      case "ONE":
-        image(oneImage,width-150,0);
-        break;
-      case "PEACE":
-        image(twoImage,width-150,0);
-        break;
-      case "THREE":
-        image(threeImage,width-150,0);
-        break;
-      case "OK":
-       image(okImage,width-150,0);
-        break;
-      case "FIST":
-        image(fistImage,width-150,0);
-        break;
-      default: 
-        break;
-      }
+  case "ONE":
+    image(oneImage, width-150, 0);
+    break;
+  case "PEACE":
+    image(twoImage, width-150, 0);
+    break;
+  case "THREE":
+    image(threeImage, width-150, 0);
+    break;
+  case "OK":
+    image(okImage, width-150, 0);
+    break;
+  case "FIST":
+    image(fistImage, width-150, 0);
+    break;
+  default: 
+    break;
+  }
 }
 String updateGesture() {
   String gestureStr = "";
@@ -365,24 +346,25 @@ void updateMouseData(int face)
 
   verifyQuadrants();
   this.traj.update(new PVector(this.handPos[0], this.handPos[1]), new PVector(this.previousHandPos[0], this.previousHandPos[1]), this.quadrant, this.drawMode);
-  
-  
+
+
   wasDrawing = true;
   //}
 }
 
+
 //Função para atualizar os pontos recebidos dos modelos, blazepose ou ligthpose
 void updateOAKData(int face)
 {
-
-  BodyPose bodypose = msgManager.getData(BodyPose.class);
   //BodyPose bodyvel = msgManager.getData(BodyVel.class);  
   //neck_pos = bodypose.keypoints.get("NECK");
-  nose_pos = bodypose.keypoints.get("NOSE");
   //eye_r_pos = bodypose.keypoints.get("EYE_R");
   //eye_l_pos = bodypose.keypoints.get("EYE_L");
   //shoulder_r_pos = bodypose.keypoints.get("SHOULDER_R");
   //shoulder_l_pos = bodypose.keypoints.get("SHOULDER_L");
+
+  BodyPose bodypose = msgManager.getData(BodyPose.class);
+  nose_pos = bodypose.keypoints.get("NOSE");
 
   if (blazeposeMode) {
     if (bodypose.keypoints.get("WRIST_L") != null) {
@@ -392,30 +374,31 @@ void updateOAKData(int face)
       if (wrist_l_pos[0] != Float.POSITIVE_INFINITY && wrist_l_pos[1] != Float.POSITIVE_INFINITY) {
         //Verifica em qual face está para mudar escolher os eixos apropriados. 
         //Mudar para função, estava dando conflita da maneira que fiz.
+        estimetedHandPos = estimateHandPosition();
         switch(face) {
         case 1: 
-          this.handPos[0] = lerp(this.previousHandPos[0],(map(wrist_l_pos[0], 0, 100, 1, 0)*width),0.5);
-          this.handPos[1] = lerp(this.previousHandPos[1],(map(wrist_l_pos[1], 0, 100, 0, 1)*height), 0.5);
+          this.handPos[0] = estimetedHandPos.x;
+          this.handPos[1] = estimetedHandPos.y;
           break;
         case 2: 
-          this.handPos[0] = -map(wrist_l_pos[1], 0, 100, 0, 1)*width;//-this.Z;
-          this.handPos[1] = map(wrist_l_pos[0], 0, 100, 1, 0)*height;//this.handPos[1];
+          this.handPos[0] = -estimetedHandPos.y*width/height;//-this.Z;
+          this.handPos[1] = estimetedHandPos.x*height/width;//this.handPos[1];
           break;
         case 3: 
-          this.handPos[0] = map(wrist_l_pos[0], 0, 100, 1, 0)*width;
-          this.handPos[1] = -map(wrist_l_pos[1], 0, 100, 0, 1)*height;//this.Z;
+          this.handPos[0] = estimetedHandPos.x;
+          this.handPos[1] = -estimetedHandPos.y;//this.Z;
           break;
         case 4: 
-          this.handPos[0] = -map(wrist_l_pos[0], 0, 100, 1, 0)*width;//this.Z;
-          this.handPos[1] = map(wrist_l_pos[1], 0, 100, 0, 1)*height;
+          this.handPos[0] = -estimetedHandPos.x;//this.Z;
+          this.handPos[1] = estimetedHandPos.y;
           break;
         case 5: 
-          this.handPos[0] = -map(wrist_l_pos[0], 0, 100, 1, 0)*width;//this.handPos[0];
-          this.handPos[1] = -map(wrist_l_pos[1], 0, 100, 0, 1)*height;//-this.Z;
+          this.handPos[0] = -estimetedHandPos.x;//this.handPos[0];
+          this.handPos[1] = -estimetedHandPos.y;//-this.Z;
           break;
         case 6: 
-          this.handPos[0] = map(wrist_l_pos[0], 0, 100, 1, 0)*width;
-          this.handPos[1] = -map(wrist_l_pos[1], 0, 100, 0, 1)*height;
+          this.handPos[0] = estimetedHandPos.x;
+          this.handPos[1] = -estimetedHandPos.y;
           break;
         }
       }
@@ -470,7 +453,20 @@ void updateOAKData(int face)
   }
   verifyQuadrants();
   this.traj.update(new PVector(this.handPos[0], this.handPos[1]), new PVector(this.previousHandPos[0], this.previousHandPos[1]), this.quadrant, this.drawMode);
-  
+}
+
+PVector estimateHandPosition() {
+  PVector estimate = new PVector(0, 0);
+  if (enableInterpolation) {
+    estimate = slerp(new PVector(this.previousHandPos[0], this.previousHandPos[1]), new PVector((map(wrist_l_pos[0], 0, 100, 1, 0)*width), (map(wrist_l_pos[1], 0, 100, 0, 1)*height)), 0.5);
+    if (estimetedHandPos.x != 0 && estimetedHandPos.y != 0 && enableSlerp) {
+      return estimate;
+    } else {
+      return new PVector(lerp(this.previousHandPos[0], (map(wrist_l_pos[0], 0, 100, 1, 0)*width), 0.5), lerp(this.previousHandPos[1], (map(wrist_l_pos[1], 0, 100, 0, 1)*height), 0.5));
+    }
+  } else {
+    return new PVector((map(wrist_l_pos[0], 0, 100, 1, 0)*width), (map(wrist_l_pos[1], 0, 100, 0, 1)*height));
+  }
 }
 
 void executeGestureCommand(String command) {
@@ -663,7 +659,7 @@ private void plotAll() {
       println("mais um", i);
       setReferences(this.trajectories.get(i).face);
       //setCoordenates(this.trajectories.get(i).face);
-      
+
       this.trajectories.get(i).plot();
     }
   }
@@ -724,8 +720,8 @@ private void playFaceSound(int face) {
 //Função para rotacionar o cubo entre as faces
 
 void rotateCube(String direction) {
-   
-  if(direction != ""){
+
+  if (direction != "") {
     face1.stop();
     face2.stop();
     face3.stop();
@@ -734,7 +730,7 @@ void rotateCube(String direction) {
     face6.stop();
     switch(direction) {
     case "LEFT":
-  
+
       rotLEFT.play();
       switch(this.face) {
       case 1:
@@ -754,9 +750,9 @@ void rotateCube(String direction) {
       }
       changeFace();
       break;
-  
+
     case "DOWN":
-  
+
       rotDOWN.play();
       switch(this.face) {
       case 1:
@@ -781,11 +777,44 @@ void rotateCube(String direction) {
   }
 }
 
+/**
+ * Spherical linear interpolation/extrapolation for PVectors.
+ * @param v1 PVector 1.
+ * @param v2 PVector 2.
+ * @param step percentage of path from v1 to v2.
+ * @return PVector between v1 and v2 (if 0<step<1).
+ */
+PVector slerp(PVector v1, PVector v2, float step) {
+  float theta = PVector.angleBetween(v1, v2);
+  if (sin(theta)==0) {
+    return v1;
+  }
+  float v1Multiplier = sin((1-step)*theta)/sin(theta);
+  float v2Multiplier = sin(step*theta)/sin(theta);
+  return PVector.add(PVector.mult(v1, v1Multiplier), PVector.mult(v2, v2Multiplier));
+}
+
 void keyPressed() {
   //For change line effect
   if (key == 'q') this.drawMode = 1; // linha
   if (key == 'w') this.drawMode = 2; // esferas
   if (key == 'e') this.drawMode = 3; // quadrados
+  if (key == 's') {
+    drawBackground();
+    if (enableSlerp) {
+      enableSlerp=false;
+    } else {
+      enableSlerp=true;
+    }
+  } 
+  if (key == 'x') {
+    drawBackground();
+    if (enableInterpolation) {
+      enableInterpolation=false;
+    } else {
+      enableInterpolation=true;
+    }
+  }
   if (keyCode == LEFT) {
     this.cubeRotation = "LEFT";
   }
