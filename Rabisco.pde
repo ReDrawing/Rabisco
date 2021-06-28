@@ -50,6 +50,7 @@ private float[] wrist_r_vel;
 private float[] wrist_l_vel;
 private PVector estimetedHandPos;
 
+
 public ArrayList<Trajectory> trajectories = new ArrayList<Trajectory>();
 public Trajectory traj;
 
@@ -72,6 +73,7 @@ private String previousGesture = "";
 private int gestureCount = 0;
 private int actualFrame = 0;
 private int previousFrame =0;
+private float loadingStep = 0;
 
 private boolean blazeposeMode = true;
 private boolean enableMouseControl = false;
@@ -79,6 +81,8 @@ private boolean wasDrawing = false;
 private boolean editingMode = false;
 private boolean enableSlerp = false;
 private boolean enableInterpolation = false;
+private boolean isGestureLoading = false;
+private boolean firstEditing = true;
 
 
 void setup() {
@@ -100,6 +104,7 @@ void setup() {
   rotLEFT = new SoundFile(this, "rota3.wav");
   rotRIGHT = new SoundFile(this, "rota4.wav");
   backgroundBlur = loadImage("background.jpg");
+  backgroundBlur.resize(width, height);
   fistImage = loadImage("fist.png");
   fistImage.resize(150, 150);
   okImage = loadImage("ok.png");
@@ -124,21 +129,33 @@ void setup() {
 }
 
 void draw() {
+
   fill(10, 0, 100);
   noStroke();
-  rect(0, 0, 130, 80);
+  rect(0, 0, 130, 120);
   textSize(34);
   fill(0, 0, 0);
   text("Modo:"+ drawMode, 0, 35);
   text("Face:"+ face, 0, 70);
+
+  if (enableSlerp) {
+    text("Slerp", 0, 105);
+  } else if (enableInterpolation) {
+    text("Lerp", 0, 105);
+  }
 
   verifyQuadrants();
   rotateCube(this.cubeRotation);
 
   //verifica se esta no modo de edição
   if (editingMode) {
-
-
+  
+  if(firstEditing){
+    tint(255,127);
+    image(backgroundBlur,0,0);
+    tint(255,255);
+    firstEditing = false;
+  }
     //verifica de abaixou as maos para detectar o gesto
 
     face1.stop();
@@ -151,22 +168,23 @@ void draw() {
 
     if (actualGesture != "") {
       if (previousGesture == actualGesture) {
+        isGestureLoading = true;
+        drawLoading();
         displayGestureSilhouette(previousGesture);
         //Verifica se manteve o mesmo comando por 10 iterações =~ 4 segundos para executar o comando
         gestureCount++;
         if (gestureCount == 8) {
           executeGestureCommand(previousGesture);
+          clearGestureLoading();
         }
       } else {
         previousGesture = actualGesture;
-        noStroke();
-        fill(0, 0, 100);
-        ellipse(width-75, 75, 150, 150);
         gestureCount = 0;
+        clearGestureLoading();
       }
     }
   } else {
-
+    firstEditing = true;
     //atualisa posição do traço dependendo do modo 
     if (enableMouseControl) {
       if (mousePressed) {
@@ -184,8 +202,7 @@ void draw() {
       //verifica condição de ambas as mãos levantadas para entrar no modo de edição
       if (wrist_l_pos[1] < nose_pos[1] && wrist_r_pos[1] < nose_pos[1]) {
         editingMode = true;
-        image(backgroundBlur, 0, 0);
-        filter(BLUR, 6);
+        
       }
     } 
 
@@ -252,21 +269,22 @@ void receive(byte[] data, String ip, int port)
 void displayGestureSilhouette(String gesture) {
   switch (gesture) {
   case "ONE":
-    image(oneImage, width-150, 0);
+    image(oneImage, width-170, 20);
     break;
   case "PEACE":
-    image(twoImage, width-150, 0);
+    image(twoImage, width-170, 20);
     break;
   case "THREE":
-    image(threeImage, width-150, 0);
+    image(threeImage, width-170, 20);
     break;
   case "OK":
-    image(okImage, width-150, 0);
+    image(okImage, width-170, 20);
     break;
   case "FIST":
-    image(fistImage, width-150, 0);
+    image(fistImage, width-170, 20);
     break;
   default: 
+    clearGestureLoading();
     break;
   }
 }
@@ -300,6 +318,29 @@ String updateGesture() {
     }
   }
   return gestureStr;
+}
+
+void drawLoading() {
+
+  if (this.isGestureLoading) {
+    noStroke();
+    fill(235, 100, 100);
+    arc(width-95, 95, 160, 160, PI + PI/2, PI + PI/2 + this.loadingStep, PIE);
+    fill(0, 0, 100);
+    ellipse(width-95, 95, 150, 150);
+
+    this.loadingStep += 0.89;
+  } else {
+    clearGestureLoading();
+  }
+}
+
+void clearGestureLoading(){
+    this.isGestureLoading = false;
+    this.loadingStep = 0;
+    noStroke();
+    fill(0, 0, 100);
+    ellipse(width-95, 95, 165, 165);
 }
 
 void updateMouseData(int face)
@@ -459,7 +500,7 @@ PVector estimateHandPosition() {
   PVector estimate = new PVector(0, 0);
   if (enableInterpolation) {
     estimate = slerp(new PVector(this.previousHandPos[0], this.previousHandPos[1]), new PVector((map(wrist_l_pos[0], 0, 100, 1, 0)*width), (map(wrist_l_pos[1], 0, 100, 0, 1)*height)), 0.5);
-    if (estimetedHandPos.x != 0 && estimetedHandPos.y != 0 && enableSlerp) {
+    if (estimate.x != 0 && estimate.y != 0 && enableSlerp) {
       return estimate;
     } else {
       return new PVector(lerp(this.previousHandPos[0], (map(wrist_l_pos[0], 0, 100, 1, 0)*width), 0.5), lerp(this.previousHandPos[1], (map(wrist_l_pos[1], 0, 100, 0, 1)*height), 0.5));
@@ -656,7 +697,7 @@ private void plotAll() {
   for (int i = 0; i < this.trajectories.size(); i++) { 
 
     if (this.trajectories.get(i).face == this.face) {
-      println("mais um", i);
+      
       setReferences(this.trajectories.get(i).face);
       //setCoordenates(this.trajectories.get(i).face);
 
