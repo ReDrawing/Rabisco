@@ -74,9 +74,10 @@ private int gestureCount = 0;
 private int actualFrame = 0;
 private int previousFrame =0;
 private float loadingStep = 0;
+private String soundMode = "embodie";//"pottery","games", "embodie", "piano"
 
 private boolean blazeposeMode = true;
-private boolean enableMouseControl = false;
+private boolean enableMouseControl = true;
 private boolean wasDrawing = false;
 private boolean editingMode = false;
 private boolean enableSlerp = false;
@@ -87,22 +88,16 @@ private boolean firstEditing = true;
 
 void setup() {
 
+  soundSetup();
+
+
 
   fullScreen();
   colorMode(HSB, 360, 100, 100);
   udp = new UDP( this, 6000); // Trocar pela porta que você usar
   udp.listen( true ); 
 
-  face1 = new SoundFile(this, "face1.wav");
-  face2 = new SoundFile(this, "face2.wav");
-  face3 = new SoundFile(this, "face3.wav");
-  face4 = new SoundFile(this, "face4.wav");
-  face5 = new SoundFile(this, "face5.wav");
-  face6 = new SoundFile(this, "face6.wav");
-  rotUP = new SoundFile(this, "rota1.wav");
-  rotDOWN = new SoundFile(this, "rota2.wav");
-  rotLEFT = new SoundFile(this, "rota3.wav");
-  rotRIGHT = new SoundFile(this, "rota4.wav");
+
   backgroundBlur = loadImage("background.jpg");
   backgroundBlur.resize(width, height);
   fistImage = loadImage("fist.png");
@@ -149,13 +144,13 @@ void draw() {
 
   //verifica se esta no modo de edição
   if (editingMode) {
-  
-  if(firstEditing){
-    tint(255,127);
-    image(backgroundBlur,0,0);
-    tint(255,255);
-    firstEditing = false;
-  }
+
+    if (firstEditing) {
+      tint(255, 127);
+      image(backgroundBlur, 0, 0);
+      tint(255, 255);
+      firstEditing = false;
+    }
     //verifica de abaixou as maos para detectar o gesto
 
     face1.stop();
@@ -202,7 +197,6 @@ void draw() {
       //verifica condição de ambas as mãos levantadas para entrar no modo de edição
       if (wrist_l_pos[1] < nose_pos[1] && wrist_r_pos[1] < nose_pos[1]) {
         editingMode = true;
-        
       }
     } 
 
@@ -335,12 +329,12 @@ void drawLoading() {
   }
 }
 
-void clearGestureLoading(){
-    this.isGestureLoading = false;
-    this.loadingStep = 0;
-    noStroke();
-    fill(0, 0, 100);
-    ellipse(width-95, 95, 165, 165);
+void clearGestureLoading() {
+  this.isGestureLoading = false;
+  this.loadingStep = 0;
+  noStroke();
+  fill(0, 0, 100);
+  ellipse(width-95, 95, 165, 165);
 }
 
 void updateMouseData(int face)
@@ -697,7 +691,7 @@ private void plotAll() {
   for (int i = 0; i < this.trajectories.size(); i++) { 
 
     if (this.trajectories.get(i).face == this.face) {
-      
+
       setReferences(this.trajectories.get(i).face);
       //setCoordenates(this.trajectories.get(i).face);
 
@@ -833,6 +827,20 @@ PVector slerp(PVector v1, PVector v2, float step) {
   float v1Multiplier = sin((1-step)*theta)/sin(theta);
   float v2Multiplier = sin(step*theta)/sin(theta);
   return PVector.add(PVector.mult(v1, v1Multiplier), PVector.mult(v2, v2Multiplier));
+}
+
+void soundSetup() {
+
+  this.face1 = new SoundFile(this, "face1-"+this.soundMode+".wav");
+  this.face2 = new SoundFile(this, "face2-"+this.soundMode+".wav");
+  this.face3 = new SoundFile(this, "face3-"+this.soundMode+".wav");
+  this.face4 = new SoundFile(this, "face4-"+this.soundMode+".wav");
+  this.face5 = new SoundFile(this, "face5-"+this.soundMode+".wav");
+  this.face6 = new SoundFile(this, "face6-"+this.soundMode+".wav");
+  this.rotUP = new SoundFile(this, "rota1-"+this.soundMode+".wav");
+  this.rotDOWN = new SoundFile(this, "rota2-"+this.soundMode+".wav");
+  this.rotLEFT = new SoundFile(this, "rota3-"+this.soundMode+".wav");
+  this.rotRIGHT = new SoundFile(this, "rota4-"+this.soundMode+".wav");
 }
 
 void keyPressed() {
